@@ -1,7 +1,7 @@
 const CACHE_NAME = "renoku-v1";
 const FILES_TO_CACHE = [
   "/",
-  "/renoku.html",
+  "/index.html",
   "/manifest.json",
   "/renoku.png",
   "./fonts/comfortaa.woff2"
