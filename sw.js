@@ -3,7 +3,7 @@ const FILES_TO_CACHE = [
   "/",
   "/renoku.html",
   "/manifest.json",
-  "/icon-192.png",
+  "/renoku.png",
   "./fonts/comfortaa.woff2"
 ];
 
