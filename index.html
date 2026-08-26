@@ -122,10 +122,11 @@
     }
 
     .status-panel {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        position: relative;
+        display: flex;
         align-items: center;
-        gap: 12px;
+        justify-content: center;
+        min-height: 72px;
         padding: 12px 14px;
         border: 1px solid rgba(52, 55, 49, 0.08);
         border-radius: 18px;
@@ -133,8 +134,16 @@
         box-shadow: var(--shadow);
     }
 
-    .difficulty-control { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .difficulty-control {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        min-width: 0;
+    }
     .control-label {
+        position: absolute;
+        left: 14px;
         color: var(--muted);
         font-size: 0.72rem;
         font-weight: 600;
@@ -142,16 +151,26 @@
         text-transform: uppercase;
     }
     #difficulty {
-        min-width: 0;
-        padding: 7px 26px 7px 9px;
-        border: 0;
-        border-radius: 9px;
-        color: var(--ink);
-        background: var(--surface-soft);
-        font-size: 0.82rem;
-        font-weight: 600;
+        min-width: 112px;
+        min-height: 38px;
+        padding: 8px 34px 8px 14px;
+        border: 1px solid rgba(47, 125, 91, 0.18);
+        border-radius: 12px;
+        appearance: none;
+        color: var(--accent-dark);
+        background-color: var(--accent-soft);
+        background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+        background-position: calc(100% - 17px) 16px, calc(100% - 12px) 16px;
+        background-repeat: no-repeat;
+        background-size: 5px 5px, 5px 5px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        text-align: center;
+        text-align-last: center;
     }
     .timer {
+        position: absolute;
+        right: 14px;
         display: flex;
         align-items: center;
         gap: 7px;
@@ -425,8 +444,9 @@
     @media (max-width: 420px) {
         .app-shell { padding-right: 10px; padding-left: 10px; }
         .app-header { margin-bottom: 16px; }
-        .status-panel { gap: 8px; padding: 10px; }
-        .difficulty-control { align-items: flex-start; flex-direction: column; gap: 3px; }
+        .status-panel { padding: 10px; }
+        .control-label { left: 10px; }
+        .timer { right: 10px; }
         .number-pad { gap: 3px; }
         .key-button { min-height: 42px; border-radius: 10px; }
     }
@@ -500,7 +520,7 @@
 
         <main>
             <div class="profile-hero">
-                <h2>Olá, <span id="player-name">Ela</span>!</h2>
+                <h2>Olá, <span id="player-name">Renata</span>!</h2>
                 <p>Cada vitória guarda uma nova frase para a sua coleção.</p>
             </div>
 
