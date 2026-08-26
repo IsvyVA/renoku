@@ -2,485 +2,654 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f7f5f0">
 <title>ReNoKu</title>
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="ReNoKu">
-<link rel="apple-touch-icon" href="icon-192.png">
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="apple-touch-icon" href="renoku.png">
+<link rel="icon" href="renoku.png">
 
 <style>
     @font-face {
         font-family: "Comfortaa";
         src: url("fonts/comfortaa.woff2") format("woff2");
+        font-weight: 400;
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: "Comfortaa";
+        src: url("fonts/comfortaa-600.woff2") format("woff2");
+        font-weight: 600;
+        font-display: swap;
+    }
+
+    :root {
+        color-scheme: light;
+        --background: #f7f5f0;
+        --surface: #ffffff;
+        --surface-soft: #eeebe4;
+        --ink: #242621;
+        --muted: #74766f;
+        --accent: #588264;
+        --accent-dark: #3e644a;
+        --accent-soft: #dce9df;
+        --line: #c9ccc5;
+        --grid: #343731;
+        --danger: #bf4b4b;
+        --shadow: 0 16px 40px rgba(50, 54, 47, 0.09);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+        min-height: 100%;
+        background: var(--background);
     }
 
     body {
-        font-family: Comfortaa, sans-serif;
-        background: #f4f4f4;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
+        min-width: 320px;
+        min-height: 100vh;
         margin: 0;
-        padding: 10px;
+        color: var(--ink);
+        background: radial-gradient(circle at top right, rgba(88, 130, 100, 0.12), transparent 30rem), var(--background);
+        font-family: "Comfortaa", system-ui, sans-serif;
     }
 
-    #gameContainer {
-        width: 100%;
-        max-width: 500px;
+    button, select, input { font: inherit; }
+    button { border: 0; touch-action: manipulation; cursor: pointer; }
+    button:focus-visible, select:focus-visible, input:focus-visible {
+        outline: 3px solid rgba(88, 130, 100, 0.3);
+        outline-offset: 2px;
     }
 
+    .app-shell {
+        width: min(100%, 680px);
+        min-height: 100vh;
+        margin: 0 auto;
+        padding: max(18px, env(safe-area-inset-top)) clamp(14px, 4vw, 28px) max(28px, env(safe-area-inset-bottom));
+    }
+
+    .screen[hidden] { display: none; }
+    .app-header, .screen-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 22px;
+    }
+
+    .brand-eyebrow {
+        display: block;
+        margin-bottom: 2px;
+        color: var(--accent-dark);
+        font-size: 0.68rem;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+        margin-bottom: 0;
+        font-size: clamp(1.7rem, 7vw, 2.35rem);
+        line-height: 1;
+        letter-spacing: -0.05em;
+    }
+    h2 { margin-bottom: 6px; font-size: clamp(1.45rem, 6vw, 2rem); letter-spacing: -0.04em; }
+    h3 { margin-bottom: 14px; font-size: 1rem; }
+
+    .icon-button, .control-button, .primary-button, .key-button {
+        border-radius: 14px;
+        transition: transform 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+    }
+    .icon-button:active, .control-button:active, .primary-button:active, .key-button:active { transform: scale(0.97); }
+
+    .icon-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 10px 14px;
+        color: var(--accent-dark);
+        background: var(--accent-soft);
+        font-size: 0.84rem;
+        font-weight: 600;
+    }
+
+    .status-panel {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        border: 1px solid rgba(52, 55, 49, 0.08);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.78);
+        box-shadow: var(--shadow);
+    }
+
+    .difficulty-control { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .control-label {
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    #difficulty {
+        min-width: 0;
+        padding: 7px 26px 7px 9px;
+        border: 0;
+        border-radius: 9px;
+        color: var(--ink);
+        background: var(--surface-soft);
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+    .timer {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+    .timer-icon { color: var(--accent-dark); font-size: 1rem; }
+    #timer { min-width: 4.4ch; font-size: 1.05rem; }
+
+    .control-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin: 12px 0;
+    }
+    .control-button {
+        min-height: 46px;
+        padding: 10px 12px;
+        color: var(--ink);
+        background: var(--surface-soft);
+        font-size: clamp(0.76rem, 3.2vw, 0.9rem);
+        font-weight: 600;
+    }
+    .control-button.active {
+        color: var(--accent-dark);
+        background: var(--accent-soft);
+        box-shadow: inset 0 0 0 2px rgba(88, 130, 100, 0.22);
+    }
+
+    .board-frame {
+        padding: 5px;
+        border-radius: 10px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+    }
     #board {
         display: grid;
-        grid-template-columns: repeat(9, 1fr);
+        grid-template-columns: repeat(9, minmax(0, 1fr));
+        grid-template-rows: repeat(9, minmax(0, 1fr));
         width: 100%;
         aspect-ratio: 1;
-        border: 4px solid black;
+        overflow: hidden;
+        border: 3px solid var(--grid);
+        border-radius: 5px;
+        background: var(--grid);
     }
-
     .cell {
         position: relative;
-        border: 1px solid #bbb;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        background: var(--surface);
     }
-
+    .cell:nth-child(9n) { border-right: 0; }
+    .cell:nth-last-child(-n + 9) { border-bottom: 0; }
+    .cell.box-right { border-right: 3px solid var(--grid); }
+    .cell.box-bottom { border-bottom: 3px solid var(--grid); }
     .cell input {
-        width: 100%;
-        height: 100%;
-        font-size: clamp(16px, 5vw, 24px);
-        text-align: center;
-        border: none;
-        background: white;
-    }
-
-    .cell input:focus {
-        outline: none;
-        background-color: #e3f2fd;
-    }
-
-    .box-right {
-        border-right: 3px solid black !important;
-    }
-
-    .box-bottom {
-        border-bottom: 3px solid black !important;
-    }
-
-    .fixed input {
-        background-color: #e0e0e0;
-        font-weight: bold;
-    }
-
-    h1 {
-        font: weight 700;
-        margin-bottom: 10px;
-    }
-
-    .title {
-        text-align: center;
-        width: 100%;
-    }
-
-    input {
-        width: 50px;
-        height: 50px;
-        text-align: center;
-        font-size: 20px;
-        border: 1px solid #999;
-    }
-
-    input:focus {
-        outline: none;
-        background-color: #e0f7fa;
-    }
-
-    .fixed {
-        background-color: #ddd;
-        font-weight: bold;
-    }
-
-    /* Erro tem prioridade absoluta */
-    .cell.error input,
-    .cell.selected.error input,
-    .cell.highlight.error input,
-    .cell.fixed.error input {
-        background-color: #ff3d3d !important;
-        color: #fff !important;
-    }
-
-    .box-border-right {
-        border-right: 3px solid black;
-    }
-
-    .box-border-bottom {
-        border-bottom: 3px solid black;
-    }
-
-    button {
-        margin-top: 20px;
-        padding: 10px 20px;
-        font-size: 16px;
-        cursor: pointer;
-    }
-
-    .start-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-    }
-
-    .start-btn {
         display: block;
-        margin: 20px auto;
-    }
-
-    #victoryScreen {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.6);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-    }
-
-    #victoryScreen.active {
-        opacity: 1;
-        pointer-events: all;
-    }
-
-    .victory-content {
-        background: white;
-        padding: 40px;
-        border-radius: 16px;
-        text-align: center;
-        max-width: 300px;
-        animation: pop 0.3s ease;
-    }
-
-    .victory-content h2 {
-        margin-bottom: 10px;
-    }
-
-    .victory-content button {
-        margin-top: 20px;
-        padding: 10px 20px;
-        font-size: 16px;
-    }
-
-    @keyframes pop {
-        from {
-            transform: scale(0.8);
-            opacity: 0;
-        }
-        to {
-            transform: scale(1);
-            opacity: 1;
-        }
-    }
-
-    .pause-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 900;
-
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-    }
-
-    .pause-overlay.active {
-        opacity: 1;
-        pointer-events: all;
-    }
-
-    .pause-box {
-        background: white;
-        padding: 30px;
-        border-radius: 12px;
-        text-align: center;
-    }
-
-    /* Input padrão */
-    .cell input {
         width: 100%;
+        min-width: 0;
         height: 100%;
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        color: var(--accent-dark);
+        background: var(--surface);
+        font-size: clamp(1rem, 5.4vw, 1.7rem);
+        font-weight: 600;
+        line-height: 1;
         text-align: center;
-        font-size: clamp(16px, 5vw, 24px);
-        border: none;
-        background-color: white; /* fundo default para células digitáveis */
-        transition: background 0.2s;
-        color: black; /* texto padrão */
+        caret-color: transparent;
+        appearance: none;
+        -webkit-text-fill-color: currentColor;
+        opacity: 1;
+        transition: background-color 100ms ease;
+    }
+    .cell.fixed input { color: var(--ink); background: #eeece7; }
+    .cell.highlight input { background: #eff5f0; }
+    .cell.fixed.highlight input { background: #e1e7df; }
+    .cell.selected input, .cell.fixed.selected input {
+        background: #cadfce;
+        box-shadow: inset 0 0 0 2px var(--accent);
+    }
+    .cell.error input, .cell.selected.error input, .cell.highlight.error input, .cell.fixed.error input {
+        color: #ffffff;
+        background: var(--danger);
+    }
+    .notes {
+        position: absolute;
+        inset: 2px;
+        z-index: 2;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        pointer-events: none;
+        color: var(--accent-dark);
+        font-size: clamp(0.42rem, 1.8vw, 0.68rem);
+        line-height: 1;
+        text-align: center;
+    }
+    .notes span { display: grid; place-items: center; }
+
+    .number-pad {
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        gap: 6px;
+        margin-top: 14px;
+    }
+    .key-button {
+        min-width: 0;
+        min-height: 46px;
+        padding: 0;
+        color: var(--accent-dark);
+        background: var(--accent-soft);
+        font-size: clamp(0.9rem, 4vw, 1.15rem);
+        font-weight: 600;
+    }
+    .key-button.erase { color: var(--muted); background: var(--surface-soft); font-size: 1rem; }
+    .primary-button {
+        width: 100%;
+        min-height: 50px;
+        margin-top: 14px;
+        padding: 12px 18px;
+        color: #ffffff;
+        background: var(--accent-dark);
+        font-size: 0.92rem;
+        font-weight: 600;
+        box-shadow: 0 10px 24px rgba(62, 100, 74, 0.2);
+    }
+    .game-hint {
+        margin: 12px 0 0;
+        color: var(--muted);
+        font-size: 0.7rem;
+        line-height: 1.5;
+        text-align: center;
     }
 
-    /* Células fixas (pré-preenchidas) */
-    .cell.fixed input {
-        background-color: #e0e0e0; /* cinza */
-        font-weight: bold;
-        color: #555; /* texto mais escuro */
+    .back-button {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border-radius: 50%;
+        color: var(--ink);
+        background: var(--surface-soft);
+        font-size: 1.2rem;
     }
-
-    /* Linha/coluna destacada */
-    .cell.highlight input {
-        background-color: #eef6ff;
+    .screen-heading { flex: 1; }
+    .screen-heading p, .profile-hero p, .empty-state {
+        margin-bottom: 0;
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.6;
     }
-
-    /* Célula selecionada */
-    .cell.selected input {
-        background-color: #cde7ff;
+    .profile-hero {
+        margin-bottom: 18px;
+        padding: 22px;
+        border-radius: 22px;
+        color: #ffffff;
+        background: linear-gradient(135deg, var(--accent-dark), #72977b);
+        box-shadow: 0 14px 30px rgba(62, 100, 74, 0.2);
     }
-
-    /* Se for fixa e estiver destacada, mantém o cinza mas adiciona borda ou leve overlay */
-    .cell.fixed.highlight input {
-        background-color: #d4d9e6; /* cinza claro com destaque */
+    .profile-hero h2, .profile-hero p { color: inherit; }
+    .profile-hero h2 { margin-bottom: 8px; }
+    .profile-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 26px;
     }
-
-    .cell.fixed.selected input {
-        background-color: #bfc8e0; /* cinza mais forte para célula selecionada */
+    .stat-card {
+        min-width: 0;
+        padding: 16px;
+        border: 1px solid rgba(52, 55, 49, 0.08);
+        border-radius: 17px;
+        background: rgba(255, 255, 255, 0.82);
     }
-
-    #profile-btn {
-        position: fixed;
-        top: 1rem;
-        right: 1rem;
-        padding: 0.5rem 1rem;
-        border-radius: 0.5rem;
-        background-color: #4caf50;
-        color: white;
-        border: none;
-        font-weight: bold;
-        z-index: 1000;
+    .stat-card span {
+        display: block;
+        margin-bottom: 7px;
+        color: var(--muted);
+        font-size: 0.68rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
     }
-
-    #profile {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 2rem;
-        border-radius: 1rem;
-        box-shadow: 0 0 20px rgba(0,0,0,0.3);
-        max-width: 90%;
-        max-height: 90%;
-        overflow-y: auto;
-        z-index: 1000;
-    }
-
-    .hidden { display: none; }
-
-    #badges {
+    .stat-card strong { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+    .profile-section { margin-bottom: 26px; }
+    .section-title-row {
         display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-top: 1rem;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
     }
-
+    .section-title-row h3 { margin-bottom: 0; }
+    .section-count { color: var(--muted); font-size: 0.72rem; }
+    .collection-list { display: grid; gap: 9px; }
+    .sentence-card {
+        position: relative;
+        margin: 0;
+        padding: 14px 16px 14px 42px;
+        border: 1px solid rgba(52, 55, 49, 0.08);
+        border-radius: 15px;
+        background: var(--surface);
+        font-size: 0.79rem;
+        line-height: 1.55;
+    }
+    .sentence-card::before {
+        position: absolute;
+        top: 13px;
+        left: 15px;
+        content: "♥";
+        color: var(--accent);
+    }
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; }
     .badge {
-        background-color: #ffd700;
-        padding: 0.5rem 1rem;
-        border-radius: 1rem;
-        font-weight: bold;
-        color: #333;
-        flex-shrink: 0;
-        text-align: center;
+        padding: 9px 12px;
+        border-radius: 999px;
+        color: #6d5410;
+        background: #f5e7b9;
+        font-size: 0.72rem;
+        font-weight: 600;
     }
 
-    @media (max-width: 600px) {
-        #gameContainer {
-            max-width: 100vw;
-            padding: 0;
-        }
-        .victory-content, .pause-box, #profile {
-            padding: 1rem;
-            max-width: 98vw;
-        }
-        #profile {
-            font-size: 0.95em;
-        }
-        .badge {
-            font-size: 0.9em;
-            padding: 0.4rem 0.7rem;
-        }
-        h1.title {
-            font-size: 1.5em;
-        }
+    .overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        background: rgba(30, 33, 29, 0.62);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 180ms ease;
+    }
+    .overlay.active { opacity: 1; pointer-events: auto; }
+    .overlay-card {
+        width: min(100%, 390px);
+        padding: 28px;
+        border-radius: 24px;
+        background: var(--surface);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+        text-align: center;
+        transform: translateY(10px) scale(0.98);
+        transition: transform 180ms ease;
+    }
+    .overlay.active .overlay-card { transform: translateY(0) scale(1); }
+    .overlay-card p { color: var(--muted); font-size: 0.88rem; line-height: 1.6; }
+    .unlock-label {
+        display: inline-block;
+        margin-bottom: 14px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        color: var(--accent-dark);
+        background: var(--accent-soft);
+        font-size: 0.68rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    @media (min-width: 560px) {
+        .profile-stats { grid-template-columns: repeat(4, 1fr); }
+        .collection-list { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 420px) {
+        .app-shell { padding-right: 10px; padding-left: 10px; }
+        .app-header { margin-bottom: 16px; }
+        .status-panel { gap: 8px; padding: 10px; }
+        .difficulty-control { align-items: flex-start; flex-direction: column; gap: 3px; }
+        .number-pad { gap: 3px; }
+        .key-button { min-height: 42px; border-radius: 10px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
     }
 </style>
 </head>
 
 <body>
-<div id="gameContainer">
-    <!-- Dificuldade, timer, botões -->
-    <div style="padding-bottom: 0.5em;">
-        <h1 class="title">ReNoKu</h1>
+<div class="app-shell">
+    <section id="game-screen" class="screen" aria-labelledby="game-title">
+        <header class="app-header">
+            <div>
+                <span class="brand-eyebrow">Sudoku</span>
+                <h1 id="game-title">ReNoKu</h1>
+            </div>
+            <button id="profile-btn" class="icon-button" type="button" aria-label="Abrir perfil"><span aria-hidden="true">♡</span> Perfil</button>
+        </header>
+
+        <main>
+            <div class="status-panel">
+                <label class="difficulty-control" for="difficulty">
+                    <span class="control-label">Dificuldade</span>
+                    <select id="difficulty">
+                        <option value="easy">Fácil</option>
+                        <option value="medium" selected>Médio</option>
+                        <option value="hard">Difícil</option>
+                    </select>
+                </label>
+                <div class="timer" aria-label="Tempo de jogo">
+                    <span class="timer-icon" aria-hidden="true">◷</span>
+                    <strong id="timer">00:00</strong>
+                </div>
+            </div>
+
+            <div class="control-row">
+                <button class="control-button" id="notesBtn" type="button" onclick="toggleNotes()">✎ Marcações: OFF</button>
+                <button class="control-button" id="pauseBtn" type="button" onclick="togglePause()">Ⅱ Pausar</button>
+            </div>
+
+            <div class="board-frame"><div id="board" role="grid" aria-label="Tabuleiro de Sudoku"></div></div>
+
+            <div class="number-pad" aria-label="Teclado numérico">
+                <button class="key-button" type="button" data-key="1">1</button>
+                <button class="key-button" type="button" data-key="2">2</button>
+                <button class="key-button" type="button" data-key="3">3</button>
+                <button class="key-button" type="button" data-key="4">4</button>
+                <button class="key-button" type="button" data-key="5">5</button>
+                <button class="key-button" type="button" data-key="6">6</button>
+                <button class="key-button" type="button" data-key="7">7</button>
+                <button class="key-button" type="button" data-key="8">8</button>
+                <button class="key-button" type="button" data-key="9">9</button>
+                <button class="key-button erase" id="erase-key" type="button" aria-label="Apagar">⌫</button>
+            </div>
+
+            <button class="primary-button" type="button" onclick="startGame()">Nova partida</button>
+            <p class="game-hint">Selecione uma casa e use o teclado. Ative as marcações para guardar possibilidades.</p>
+        </main>
+    </section>
+
+    <section id="profile-screen" class="screen" aria-labelledby="profile-title" hidden>
+        <header class="screen-header">
+            <button id="back-to-game" class="back-button" type="button" aria-label="Voltar ao jogo">←</button>
+            <div class="screen-heading">
+                <span class="brand-eyebrow">Sua jornada</span>
+                <h1 id="profile-title">Perfil</h1>
+            </div>
+        </header>
+
+        <main>
+            <div class="profile-hero">
+                <h2>Olá, <span id="player-name">Ela</span>!</h2>
+                <p>Cada vitória guarda uma nova frase para a sua coleção.</p>
+            </div>
+
+            <div class="profile-stats">
+                <div class="stat-card"><span>Partidas</span><strong id="games-played">0</strong></div>
+                <div class="stat-card"><span>Fácil</span><strong id="best-time-easy">--:--</strong></div>
+                <div class="stat-card"><span>Médio</span><strong id="best-time-medium">--:--</strong></div>
+                <div class="stat-card"><span>Difícil</span><strong id="best-time-hard">--:--</strong></div>
+            </div>
+
+            <section class="profile-section" aria-labelledby="collection-title">
+                <div class="section-title-row">
+                    <h3 id="collection-title">Frases desbloqueadas</h3>
+                    <span class="section-count" id="sentence-count">0 de 18</span>
+                </div>
+                <div class="collection-list" id="sentences"></div>
+            </section>
+
+            <section class="profile-section" aria-labelledby="achievements-title">
+                <div class="section-title-row"><h3 id="achievements-title">Conquistas</h3></div>
+                <div class="badges" id="badges"></div>
+            </section>
+        </main>
+    </section>
+</div>
+
+<div id="pauseOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+    <div class="overlay-card">
+        <h2 id="pause-title">Jogo pausado</h2>
+        <p>Respira, meu amor. O tempo está esperando por você.</p>
+        <button class="primary-button" type="button" onclick="resumeGame()">Continuar</button>
     </div>
-    <div>
-        <label>Dificuldade: </label>
-        <select id="difficulty">
-            <option value="easy">Fácil</option>
-            <option value="medium" selected>Médio</option>
-            <option value="hard">Difícil</option>
-        </select>
+</div>
 
-        <span style="margin-left:20px;">
-            ⏱️ Tempo: <strong id="timer">00:00</strong>
-        </span>
+<div id="victoryScreen" class="overlay" role="dialog" aria-modal="true" aria-labelledby="victory-title">
+    <div class="overlay-card">
+        <span class="unlock-label" id="unlock-label">Nova frase desbloqueada</span>
+        <h2 id="victory-title">Parabéns, meu amor!</h2>
+        <p id="finalTime"></p>
+        <p id="romanticText"></p>
+        <button class="primary-button" type="button" onclick="startGame()">Jogar novamente</button>
     </div>
-    <div style="padding-bottom: 0.5em;">
-        <button onclick="toggleNotes()" id="notesBtn">✏️ Modo Marcações: OFF</button>
-        <button onclick="togglePause()" id="pauseBtn">⏸️ Pausar</button>
-    </div>
-    <!-- Tabuleiro -->
-    <div id="board"></div>
-    <button class="start-btn" onclick="startGame()">Nova Partida</button>
-
-    <!-- Botão para abrir o perfil -->
-    <button id="profile-btn">Perfil</button>
-
-    <!-- Tela do perfil -->
-    <div id="profile" class="hidden">
-        <h2>Perfil de <span id="player-name">Ela</span></h2>
-        
-        <div class="stats">
-            <p>Partidas jogadas: <span id="games-played">0</span></p>
-            <p>Melhor tempo (Fácil): <span id="best-time-easy">--:--</span></p>
-            <p>Melhor tempo (Médio): <span id="best-time-medium">--:--</span></p>
-            <p>Melhor tempo (Difícil): <span id="best-time-hard">--:--</span></p>
-        </div>
-
-        <h3>Frases desbloqueadas:</h3>
-        <div id="badges">
-            <!-- badges aparecerão aqui -->
-        </div>
-
-        <button onclick="closeProfile()">Fechar</button>
-    </div>
-
 </div>
 
 <script>
 const N = 9;
+const PROFILE_KEY = "renoku-profile";
+
 let solution = [];
 let timerInterval;
 let seconds = 0;
 let notesMode = false;
 let isPaused = false;
-
-const romanticMessages = [
-    "Você é minha campeã para sempre ♥️",
-    "A vida só é boa porque você está ao meu lado!",
-    "Vencedendo aqui do mesmo jeito que vencemos a distância",
-    "Meu prêmio maior é ter você comigo ♥️",
-    "Nada melhor que acordar ao seu lado!",
-    "Assim que tem que ser! Se jogou, neném tem que vencer!",
-    "Bora comemorar com um amorzinho? 😏",
-    "Nada como minha plantinha crescendo! 🌱",
-    "Hora de coroar minha abelhinha vitoriosa 🐝",
-    "Tome meu amor, deixou cair sua 👑",
-    "Medalha de ouro nas olimpiadas de Sudoku 🥇",
-    "Demorou de mais, o velhinho do lado fez mais rápido 👴🏼",
-    "Vitória! A recompensa é um descanso no peitinho",
-    "Mikey aprova essa partida 👄",
-    "Que bom meu amor! Te amo 😘",
-    "Você consegue amor, um pouco mais e já não mais separação ♥️",
-    "Você é o sol dos meus dias e lua das minhas noites",
-    "Chucu Chucu venceu 🙌🏻! Chucu Chucu vencedor!"
-];
-
-// Perfil do jogador
-const PROFILE_KEY = "renoku-profile";
-const defaultProfile = {
-    gamesPlayed: 0,
-    bestTimes: { easy: null, medium: null, hard: null },
-    badges: []
-};
+let gameStarted = false;
+let selectedCell = null;
+let profileTimerWasRunning = false;
 let profile = null;
 
-const badgeList = [
-    { key: "primeira", label: "Primeira vitória!" },
-    { key: "5games", label: "5 partidas jogadas!" },
-    { key: "rapido_easy", label: "Menos de 2min (Fácil)" },
-    { key: "rapido_medium", label: "Menos de 3min (Médio)" },
-    { key: "rapido_hard", label: "Menos de 5min (Difícil)" }
+const romanticMessages = [
+    { key: "frase-01", text: "Você é minha campeã para sempre ♥️" },
+    { key: "frase-02", text: "A vida só é boa porque você está ao meu lado!" },
+    { key: "frase-03", text: "Vencendo aqui do mesmo jeito que vencemos a distância" },
+    { key: "frase-04", text: "Meu prêmio maior é ter você comigo ♥️" },
+    { key: "frase-05", text: "Nada melhor que acordar ao seu lado!" },
+    { key: "frase-06", text: "Assim que tem que ser! Se jogou, neném tem que vencer!" },
+    { key: "frase-07", text: "Bora comemorar com um amorzinho? 😏" },
+    { key: "frase-08", text: "Nada como minha plantinha crescendo! 🌱" },
+    { key: "frase-09", text: "Hora de coroar minha abelhinha vitoriosa 🐝" },
+    { key: "frase-10", text: "Tome meu amor, deixou cair sua 👑" },
+    { key: "frase-11", text: "Medalha de ouro nas olimpíadas de Sudoku 🥇" },
+    { key: "frase-12", text: "Demorou demais, o velhinho do lado fez mais rápido 👴🏼" },
+    { key: "frase-13", text: "Vitória! A recompensa é um descanso no peitinho" },
+    { key: "frase-14", text: "Mikey aprova essa partida 👄" },
+    { key: "frase-15", text: "Que bom, meu amor! Te amo 😘" },
+    { key: "frase-16", text: "Você consegue, amor. Um pouco mais e já não há separação ♥️" },
+    { key: "frase-17", text: "Você é o sol dos meus dias e a lua das minhas noites" },
+    { key: "frase-18", text: "Chucu Chucu venceu 🙌🏻! Chucu Chucu vencedor!" }
 ];
 
+const badgeList = [
+    { key: "primeira", label: "Primeira vitória" },
+    { key: "5games", label: "5 partidas jogadas" },
+    { key: "rapido_easy", label: "Fácil em menos de 2 min" },
+    { key: "rapido_medium", label: "Médio em menos de 3 min" },
+    { key: "rapido_hard", label: "Difícil em menos de 5 min" }
+];
+
+function createDefaultProfile() {
+    return {
+        gamesPlayed: 0,
+        bestTimes: { easy: null, medium: null, hard: null },
+        badges: [],
+        unlockedMessages: []
+    };
+}
+
 function formatTime(sec) {
-    let m = Math.floor(sec / 60);
-    let s = sec % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    let minutes = Math.floor(sec / 60);
+    let remainingSeconds = sec % 60;
+    return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
-function togglePause() {
-    if (!isPaused) {
-        pauseGame();
-    }
-}
-
-function pauseGame() {
-    isPaused = true;
+function runTimer() {
     clearInterval(timerInterval);
-
-    document.querySelectorAll("#board input").forEach(input => {
-    input.disabled = true;
-});
-
-    document.getElementById("pauseOverlay").classList.add("active");}
-
-function resumeGame() {
-    isPaused = false;
-
     timerInterval = setInterval(() => {
         seconds++;
         document.getElementById("timer").innerText = formatTime(seconds);
     }, 1000);
-
-    document.getElementById("pauseOverlay").classList.remove("active");
-
-    document.querySelectorAll("#board input").forEach(input => {
-        if (!input.classList.contains("fixed")) {
-            input.disabled = false;
-        }
-    });
 }
 
 function startTimer() {
     seconds = 0;
     document.getElementById("timer").innerText = "00:00";
-    clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-        seconds++;
-        document.getElementById("timer").innerText = formatTime(seconds);
-    }, 1000);
+    runTimer();
 }
 
-function stopTimer() {
-    clearInterval(timerInterval);
+function stopTimer() { clearInterval(timerInterval); }
+
+function togglePause() {
+    if (gameStarted && !isPaused) pauseGame();
+}
+
+function pauseGame() {
+    isPaused = true;
+    stopTimer();
+    document.querySelectorAll("#board input").forEach(input => { input.disabled = true; });
+    document.getElementById("pauseOverlay").classList.add("active");
+}
+
+function resumeGame() {
+    isPaused = false;
+    if (gameStarted) runTimer();
+    document.getElementById("pauseOverlay").classList.remove("active");
+    document.querySelectorAll("#board input").forEach(input => {
+        input.disabled = input.closest(".cell").classList.contains("fixed");
+    });
 }
 
 function isValid(board, row, col, num) {
-    for (let x = 0; x < N; x++) {
-        if (board[row][x] === num) return false;
-        if (board[x][col] === num) return false;
+    for (let index = 0; index < N; index++) {
+        if (board[row][index] === num || board[index][col] === num) return false;
     }
-
     let startRow = row - row % 3;
     let startCol = col - col % 3;
-
-    for (let i = 0; i < 3; i++)
-        for (let j = 0; j < 3; j++)
-            if (board[startRow + i][startCol + j] === num) return false;
-
+    for (let rowOffset = 0; rowOffset < 3; rowOffset++) {
+        for (let colOffset = 0; colOffset < 3; colOffset++) {
+            if (board[startRow + rowOffset][startCol + colOffset] === num) return false;
+        }
+    }
     return true;
 }
 
@@ -488,12 +657,11 @@ function solve(board) {
     for (let row = 0; row < N; row++) {
         for (let col = 0; col < N; col++) {
             if (board[row][col] === 0) {
-                let nums = [...Array(9).keys()].map(x => x + 1);
-                shuffle(nums);
-
-                for (let num of nums) {
-                    if (isValid(board, row, col, num)) {
-                        board[row][col] = num;
+                let numbers = [...Array(9).keys()].map(index => index + 1);
+                shuffle(numbers);
+                for (let number of numbers) {
+                    if (isValid(board, row, col, number)) {
+                        board[row][col] = number;
                         if (solve(board)) return true;
                         board[row][col] = 0;
                     }
@@ -506,9 +674,9 @@ function solve(board) {
 }
 
 function shuffle(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        let j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+    for (let index = array.length - 1; index > 0; index--) {
+        let randomIndex = Math.floor(Math.random() * (index + 1));
+        [array[index], array[randomIndex]] = [array[randomIndex], array[index]];
     }
 }
 
@@ -520,9 +688,7 @@ function generateFullBoard() {
 
 function removeNumbers(board, difficulty) {
     let puzzle = board.map(row => [...row]);
-    let removeCount = difficulty === "easy" ? 30 :
-                      difficulty === "medium" ? 40 : 50;
-
+    let removeCount = difficulty === "easy" ? 30 : difficulty === "medium" ? 40 : 50;
     while (removeCount > 0) {
         let row = Math.floor(Math.random() * 9);
         let col = Math.floor(Math.random() * 9);
@@ -531,227 +697,237 @@ function removeNumbers(board, difficulty) {
             removeCount--;
         }
     }
-
     return puzzle;
 }
 
 function checkWin() {
     const inputs = document.querySelectorAll("#board input");
     let index = 0;
-
     for (let row = 0; row < 9; row++) {
         for (let col = 0; col < 9; col++) {
-            let value = parseInt(inputs[index].value);
-            if (value !== solution[row][col]) return false;
+            if (parseInt(inputs[index].value) !== solution[row][col]) return false;
             index++;
         }
     }
-
+    gameStarted = false;
     stopTimer();
-    let randomMessage = romanticMessages[Math.floor(Math.random() * romanticMessages.length)];
-    showVictoryScreen(randomMessage);
+    const unlockedMessage = unlockVictoryMessage();
+    updateProfileAfterWin();
+    showVictoryScreen(unlockedMessage);
     return true;
 }
 
 function toggleNotes() {
     notesMode = !notesMode;
-    document.getElementById("notesBtn").innerText =
-        notesMode ? "✏️ Modo Marcações: ON" : "✏️ Modo Marcações: OFF";
+    const notesButton = document.getElementById("notesBtn");
+    notesButton.innerText = notesMode ? "✎ Marcações: ON" : "✎ Marcações: OFF";
+    notesButton.classList.toggle("active", notesMode);
+    notesButton.setAttribute("aria-pressed", notesMode);
 }
 
 function addNote(cell, number) {
     let notes = cell.querySelector(".notes");
-
     if (!notes) {
         notes = document.createElement("div");
-        notes.classList.add("notes");
-        notes.style.position = "absolute";
-        notes.style.top = "2px";
-        notes.style.left = "2px";
-        notes.style.right = "2px";
-        notes.style.bottom = "2px";
-        notes.style.fontSize = "10px";
-        notes.style.display = "grid";
-        notes.style.gridTemplateColumns = "repeat(3, 1fr)";
-        notes.style.pointerEvents = "none";
-        cell.appendChild(notes);
-
-        for (let i = 1; i <= 9; i++) {
+        notes.className = "notes";
+        notes.setAttribute("aria-hidden", "true");
+        for (let index = 1; index <= 9; index++) {
             let span = document.createElement("span");
-            span.dataset.number = i;
+            span.dataset.number = index;
             notes.appendChild(span);
         }
+        cell.appendChild(notes);
     }
-
-    let target = notes.querySelector(`[data-number='${number}']`);
+    let target = notes.querySelector(`[data-number="${number}"]`);
     target.innerText = target.innerText ? "" : number;
 }
 
-function showVictoryScreen(message) {
-    document.getElementById("finalTime").innerText =
-        `⏱️ Tempo: ${formatTime(seconds)}`;
-    document.getElementById("romanticText").innerText = message;
-    document.getElementById("victoryScreen").classList.add("active");
-    updateProfileAfterWin();
+function processCellInput(cell, rawValue) {
+    const input = cell.querySelector("input");
+    let value = parseInt(rawValue);
+    if (!value || value < 1 || value > 9) {
+        input.value = "";
+        cell.dataset.value = "";
+        cell.classList.remove("error");
+        return;
+    }
+    if (notesMode) {
+        addNote(cell, value);
+        input.value = "";
+        return;
+    }
+    input.value = value;
+    cell.dataset.value = value;
+    if (value !== solution[Number(cell.dataset.row)][Number(cell.dataset.col)]) {
+        cell.classList.add("error");
+    } else {
+        cell.classList.remove("error");
+        let notes = cell.querySelector(".notes");
+        if (notes) notes.remove();
+        checkWin();
+    }
+}
+
+function enterNumber(number) {
+    if (!selectedCell || selectedCell.classList.contains("fixed") || isPaused || !gameStarted) return;
+    if (document.getElementById("game-screen").hidden) return;
+    processCellInput(selectedCell, number);
+}
+
+function eraseSelectedCell() {
+    if (!selectedCell || selectedCell.classList.contains("fixed") || isPaused || !gameStarted) return;
+    if (document.getElementById("game-screen").hidden) return;
+    let input = selectedCell.querySelector("input");
+    let notes = selectedCell.querySelector(".notes");
+    input.value = "";
+    selectedCell.dataset.value = "";
+    selectedCell.classList.remove("error");
+    if (notes) notes.remove();
+    input.focus({ preventScroll: true });
 }
 
 function renderBoard(puzzle) {
-    const boardDiv = document.getElementById("board");
-    boardDiv.innerHTML = "";
-
+    const board = document.getElementById("board");
+    board.innerHTML = "";
+    selectedCell = null;
     for (let row = 0; row < 9; row++) {
         for (let col = 0; col < 9; col++) {
             let cell = document.createElement("div");
-            cell.classList.add("cell");
+            cell.className = "cell";
             cell.dataset.row = row;
             cell.dataset.col = col;
+            cell.dataset.value = puzzle[row][col] || "";
+            cell.setAttribute("role", "gridcell");
 
             let input = document.createElement("input");
             input.type = "tel";
             input.inputMode = "numeric";
             input.pattern = "[1-9]";
             input.maxLength = 1;
-
-            // Salva valor atual da célula no dataset
-            cell.dataset.value = puzzle[row][col] !== 0 ? puzzle[row][col] : "";
-
+            input.readOnly = true;
+            input.setAttribute("aria-label", `Linha ${row + 1}, coluna ${col + 1}`);
             if (puzzle[row][col] !== 0) {
                 input.value = puzzle[row][col];
                 input.disabled = true;
                 cell.classList.add("fixed");
-            } else {
-                input.value = "";
-                input.addEventListener("input", function () {
-                    let val = parseInt(this.value);
-                    if (!val || val < 1 || val > 9) {
-                        this.value = "";
-                        cell.dataset.value = "";
-                        return;
-                    }
-                    if (notesMode) {
-                        addNote(cell, val);
-                        this.value = "";
-                        return;
-                    }
-                    cell.dataset.value = val;
-                    if (val !== solution[row][col]) {
-                        cell.classList.add("error");
-                    } else {
-                        cell.classList.remove("error");
-                        let notes = cell.querySelector(".notes");
-                        if (notes) notes.remove();
-                        // Verifica vitória
-                        if (checkWin()) return;
-                    }
-                });
             }
-
+            if ((col + 1) % 3 === 0 && col !== 8) cell.classList.add("box-right");
+            if ((row + 1) % 3 === 0 && row !== 8) cell.classList.add("box-bottom");
             cell.appendChild(input);
             cell.addEventListener("click", () => selectCell(row, col));
             input.addEventListener("focus", () => selectCell(row, col));
-
-            if ((col + 1) % 3 === 0 && col !== 8) cell.classList.add("box-right");
-            if ((row + 1) % 3 === 0 && row !== 8) cell.classList.add("box-bottom");
-
-            boardDiv.appendChild(cell);
+            board.appendChild(cell);
         }
     }
 }
 
 function selectCell(row, col) {
-    // limpa seleções antigas
-    document.querySelectorAll(".cell").forEach(c => {
-        c.classList.remove("selected", "highlight");
-    });
-
-    const selectedCell = document.querySelector(`.cell[data-row='${row}'][data-col='${col}']`);
+    document.querySelectorAll(".cell").forEach(cell => { cell.classList.remove("selected", "highlight"); });
+    selectedCell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
     selectedCell.classList.add("selected");
-
-    // destaca linha e coluna
-    document.querySelectorAll(".cell").forEach(c => {
-        const cellRow = Number(c.dataset.row);
-        const cellCol = Number(c.dataset.col);
-        if (cellRow === row || cellCol === col) {
-            c.classList.add("highlight");
-        }
+    document.querySelectorAll(".cell").forEach(cell => {
+        if (Number(cell.dataset.row) === row || Number(cell.dataset.col) === col) cell.classList.add("highlight");
     });
 }
 
 function startGame() {
     document.getElementById("victoryScreen").classList.remove("active");
+    document.getElementById("pauseOverlay").classList.remove("active");
     const difficulty = document.getElementById("difficulty").value;
     solution = generateFullBoard();
-    // Deep copy solution to avoid mutating on removeNumbers
-    let solutionCopy = solution.map(row => row.slice());
-    let puzzle = removeNumbers(solutionCopy, difficulty);
+    let puzzle = removeNumbers(solution.map(row => [...row]), difficulty);
+    isPaused = false;
+    gameStarted = true;
     renderBoard(puzzle);
     startTimer();
-    // Atualiza perfil de partidas jogadas
     profile.gamesPlayed = (profile.gamesPlayed || 0) + 1;
     saveProfile();
-}
-
-//---------------------- PERFIL do jogador --------------------------
-function loadProfile() {
-    let stored = localStorage.getItem(PROFILE_KEY);
-    if (stored) {
-        try {
-            profile = JSON.parse(stored);
-        } catch {
-            profile = { ...defaultProfile };
-        }
-    } else {
-        profile = { ...defaultProfile };
-    }
     showProfile();
 }
 
-function saveProfile() {
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+function loadProfile() {
+    const fallback = createDefaultProfile();
+    let stored = localStorage.getItem(PROFILE_KEY);
+    if (!stored) {
+        profile = fallback;
+        return;
+    }
+    try {
+        let savedProfile = JSON.parse(stored);
+        profile = {
+            ...fallback,
+            ...savedProfile,
+            bestTimes: { ...fallback.bestTimes, ...(savedProfile.bestTimes || {}) },
+            badges: Array.isArray(savedProfile.badges) ? savedProfile.badges : [],
+            unlockedMessages: Array.isArray(savedProfile.unlockedMessages) ? savedProfile.unlockedMessages : []
+        };
+    } catch {
+        profile = fallback;
+    }
 }
+
+function saveProfile() { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); }
 
 function showProfile() {
     document.getElementById("games-played").innerText = profile.gamesPlayed || 0;
-    ["easy", "medium", "hard"].forEach(diff => {
-        let el = document.getElementById("best-time-" + diff);
-        if (profile.bestTimes && profile.bestTimes[diff]) {
-            el.innerText = formatTime(profile.bestTimes[diff]);
-        } else {
-            el.innerText = "--:--";
-        }
+    ["easy", "medium", "hard"].forEach(difficulty => {
+        let element = document.getElementById("best-time-" + difficulty);
+        element.innerText = profile.bestTimes[difficulty] ? formatTime(profile.bestTimes[difficulty]) : "--:--";
     });
-    // badges/frases
-    const badgesDiv = document.getElementById("badges");
-    badgesDiv.innerHTML = "";
-    (profile.badges||[]).forEach(key => {
-        let badgeData = badgeList.find(b => b.key === key);
-        if (badgeData) {
-            let div = document.createElement("div");
-            div.className = "badge";
-            div.innerText = badgeData.label;
-            badgesDiv.appendChild(div);
-        }
-    });
+
+    const unlockedMessages = romanticMessages.filter(message => profile.unlockedMessages.includes(message.key));
+    document.getElementById("sentence-count").innerText = `${unlockedMessages.length} de ${romanticMessages.length}`;
+    const sentences = document.getElementById("sentences");
+    sentences.innerHTML = "";
+    if (unlockedMessages.length === 0) {
+        let emptyState = document.createElement("p");
+        emptyState.className = "empty-state";
+        emptyState.innerText = "Complete uma partida para desbloquear a primeira frase.";
+        sentences.appendChild(emptyState);
+    } else {
+        unlockedMessages.slice().reverse().forEach(message => {
+            let card = document.createElement("p");
+            card.className = "sentence-card";
+            card.innerText = message.text;
+            sentences.appendChild(card);
+        });
+    }
+
+    const badges = document.getElementById("badges");
+    badges.innerHTML = "";
+    const unlockedBadges = badgeList.filter(badge => profile.badges.includes(badge.key));
+    if (unlockedBadges.length === 0) {
+        let emptyState = document.createElement("p");
+        emptyState.className = "empty-state";
+        emptyState.innerText = "Suas conquistas aparecerão aqui.";
+        badges.appendChild(emptyState);
+    } else {
+        unlockedBadges.forEach(badge => {
+            let element = document.createElement("div");
+            element.className = "badge";
+            element.innerText = badge.label;
+            badges.appendChild(element);
+        });
+    }
 }
 
 function unlockBadge(key) {
-    if (!profile.badges) profile.badges = [];
-    if (!profile.badges.includes(key)) {
-        profile.badges.push(key);
-        saveProfile();
-        showProfile();
-    }
+    if (!profile.badges.includes(key)) profile.badges.push(key);
+}
+
+function unlockVictoryMessage() {
+    const lockedMessages = romanticMessages.filter(message => !profile.unlockedMessages.includes(message.key));
+    const pool = lockedMessages.length > 0 ? lockedMessages : romanticMessages;
+    const message = pool[Math.floor(Math.random() * pool.length)];
+    const isNew = !profile.unlockedMessages.includes(message.key);
+    if (isNew) profile.unlockedMessages.push(message.key);
+    return { ...message, isNew };
 }
 
 function updateProfileAfterWin() {
-    // Atualiza melhor tempo
     let difficulty = document.getElementById("difficulty").value;
-    if (!profile.bestTimes) profile.bestTimes = {};
-    if (!profile.bestTimes[difficulty] || seconds < profile.bestTimes[difficulty]) {
-        profile.bestTimes[difficulty] = seconds;
-    }
-    // Badges
-    if (!(profile.badges||[]).includes("primeira")) unlockBadge("primeira");
+    if (!profile.bestTimes[difficulty] || seconds < profile.bestTimes[difficulty]) profile.bestTimes[difficulty] = seconds;
+    unlockBadge("primeira");
     if (profile.gamesPlayed >= 5) unlockBadge("5games");
     if (difficulty === "easy" && seconds <= 120) unlockBadge("rapido_easy");
     if (difficulty === "medium" && seconds <= 180) unlockBadge("rapido_medium");
@@ -760,43 +936,55 @@ function updateProfileAfterWin() {
     showProfile();
 }
 
-// Botão perfil
-document.getElementById("profile-btn").addEventListener("click", function() {
-    showProfile();
-    document.getElementById("profile").classList.remove("hidden");
-});
-function closeProfile() {
-    document.getElementById("profile").classList.add("hidden");
+function showVictoryScreen(message) {
+    document.getElementById("finalTime").innerText = `Tempo: ${formatTime(seconds)}`;
+    document.getElementById("romanticText").innerText = message.text;
+    document.getElementById("unlock-label").innerText = message.isNew ? "Nova frase desbloqueada" : "Coleção completa";
+    document.getElementById("victoryScreen").classList.add("active");
 }
 
-// Inicialização
+function openProfileScreen() {
+    profileTimerWasRunning = gameStarted && !isPaused;
+    if (profileTimerWasRunning) stopTimer();
+    showProfile();
+    document.getElementById("game-screen").hidden = true;
+    document.getElementById("profile-screen").hidden = false;
+    window.scrollTo(0, 0);
+}
+
+function closeProfileScreen() {
+    document.getElementById("profile-screen").hidden = true;
+    document.getElementById("game-screen").hidden = false;
+    if (profileTimerWasRunning && gameStarted && !isPaused) runTimer();
+    profileTimerWasRunning = false;
+    window.scrollTo(0, 0);
+}
+
+document.getElementById("profile-btn").addEventListener("click", openProfileScreen);
+document.getElementById("back-to-game").addEventListener("click", closeProfileScreen);
+document.querySelectorAll("[data-key]").forEach(button => {
+    button.addEventListener("click", () => enterNumber(Number(button.dataset.key)));
+});
+document.getElementById("erase-key").addEventListener("click", eraseSelectedCell);
+document.addEventListener("keydown", event => {
+    if (/^[1-9]$/.test(event.key)) {
+        event.preventDefault();
+        enterNumber(Number(event.key));
+    } else if (event.key === "Backspace" || event.key === "Delete") {
+        event.preventDefault();
+        eraseSelectedCell();
+    }
+});
+
 window.addEventListener("DOMContentLoaded", () => {
     loadProfile();
+    showProfile();
+    startGame();
 });
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js")
-    .then(() => console.log("Service Worker registrado"))
-    .catch(err => console.log("Erro SW:", err));
+    navigator.serviceWorker.register("./sw.js").catch(error => console.log("Erro SW:", error));
 }
 </script>
-
-<div id="pauseOverlay" class="pause-overlay">
-    <div class="pause-box">
-        <h2>⏸️ ReNoKu pausado</h2>
-        <p>Respira, meu amor 😌</p>
-        <button onclick="resumeGame()">▶️ Continuar</button>
-    </div>
-</div>
-
-<div id="victoryScreen">
-    <div class="victory-content">
-        <h2>🏆 Parabéns meu amor!</h2>
-        <p id="finalTime"></p>
-        <p id="romanticText"></p>
-        <button onclick="startGame()">Jogar Novamente</button>
-    </div>
-</div>
-
 </body>
 </html>
