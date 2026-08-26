@@ -41,6 +41,34 @@
         --grid: #343731;
         --danger: #bf4b4b;
         --shadow: 0 16px 40px rgba(50, 54, 47, 0.09);
+        --panel: rgba(255, 255, 255, 0.78);
+        --fixed-cell: #eeece7;
+        --highlight-cell: #eff5f0;
+        --fixed-highlight-cell: #e1e7df;
+        --selected-cell: #cadfce;
+        --primary: #3e644a;
+    }
+
+    :root[data-theme="dark"] {
+        color-scheme: dark;
+        --background: #151915;
+        --surface: #202620;
+        --surface-soft: #2a312a;
+        --ink: #f0f3ef;
+        --muted: #aeb7af;
+        --accent: #83ad8d;
+        --accent-dark: #a7d3b0;
+        --accent-soft: #263d2c;
+        --line: #465047;
+        --grid: #a5aea6;
+        --danger: #b94646;
+        --shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+        --panel: rgba(31, 38, 32, 0.88);
+        --fixed-cell: #293029;
+        --highlight-cell: #27372b;
+        --fixed-highlight-cell: #304034;
+        --selected-cell: #3a5b42;
+        --primary: #456f51;
     }
 
     * { box-sizing: border-box; }
@@ -80,6 +108,12 @@
         justify-content: space-between;
         gap: 16px;
         margin-bottom: 22px;
+    }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    #theme-toggle {
+        width: 44px;
+        padding: 0;
+        font-size: 1.05rem;
     }
 
     .brand-eyebrow {
@@ -130,7 +164,7 @@
         padding: 12px 14px;
         border: 1px solid rgba(52, 55, 49, 0.08);
         border-radius: 18px;
-        background: rgba(255, 255, 255, 0.78);
+        background: var(--panel);
         box-shadow: var(--shadow);
     }
 
@@ -143,7 +177,9 @@
     }
     .control-label {
         position: absolute;
+        top: 50%;
         left: 14px;
+        transform: translateY(-50%);
         color: var(--muted);
         font-size: 0.72rem;
         font-weight: 600;
@@ -251,12 +287,13 @@
         -webkit-text-fill-color: currentColor;
         opacity: 1;
         transition: background-color 100ms ease;
+        pointer-events: none;
     }
-    .cell.fixed input { color: var(--ink); background: #eeece7; }
-    .cell.highlight input { background: #eff5f0; }
-    .cell.fixed.highlight input { background: #e1e7df; }
+    .cell.fixed input { color: var(--ink); background: var(--fixed-cell); }
+    .cell.highlight input { background: var(--highlight-cell); }
+    .cell.fixed.highlight input { background: var(--fixed-highlight-cell); }
     .cell.selected input, .cell.fixed.selected input {
-        background: #cadfce;
+        background: var(--selected-cell);
         box-shadow: inset 0 0 0 2px var(--accent);
     }
     .cell.error input, .cell.selected.error input, .cell.highlight.error input, .cell.fixed.error input {
@@ -299,7 +336,7 @@
         margin-top: 14px;
         padding: 12px 18px;
         color: #ffffff;
-        background: var(--accent-dark);
+        background: var(--primary);
         font-size: 0.92rem;
         font-weight: 600;
         box-shadow: 0 10px 24px rgba(62, 100, 74, 0.2);
@@ -465,7 +502,10 @@
                 <span class="brand-eyebrow">Sudoku</span>
                 <h1 id="game-title">ReNoKu</h1>
             </div>
-            <button id="profile-btn" class="icon-button" type="button" aria-label="Abrir perfil"><span aria-hidden="true">♡</span> Perfil</button>
+            <div class="header-actions">
+                <button id="theme-toggle" class="icon-button" type="button" aria-label="Ativar modo escuro" title="Alternar tema"><span aria-hidden="true">☾</span></button>
+                <button id="profile-btn" class="icon-button" type="button" aria-label="Abrir perfil"><span aria-hidden="true">♡</span> Perfil</button>
+            </div>
         </header>
 
         <main>
@@ -568,6 +608,7 @@
 <script>
 const N = 9;
 const PROFILE_KEY = "renoku-profile";
+const THEME_KEY = "renoku-theme";
 
 let solution = [];
 let timerInterval;
@@ -607,6 +648,27 @@ const badgeList = [
     { key: "rapido_medium", label: "Médio em menos de 3 min" },
     { key: "rapido_hard", label: "Difícil em menos de 5 min" }
 ];
+
+function applyTheme(theme) {
+    const isDark = theme === "dark";
+    const toggle = document.getElementById("theme-toggle");
+    document.documentElement.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]').content = isDark ? "#151915" : "#f7f5f0";
+    toggle.querySelector("span").innerText = isDark ? "☀" : "☾";
+    toggle.setAttribute("aria-label", isDark ? "Ativar modo claro" : "Ativar modo escuro");
+}
+
+function initializeTheme() {
+    const savedTheme = localStorage.getItem(THEME_KEY);
+    const preferredTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    applyTheme(savedTheme || preferredTheme);
+}
+
+function toggleTheme() {
+    const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    localStorage.setItem(THEME_KEY, nextTheme);
+    applyTheme(nextTheme);
+}
 
 function createDefaultProfile() {
     return {
@@ -825,6 +887,7 @@ function renderBoard(puzzle) {
             input.pattern = "[1-9]";
             input.maxLength = 1;
             input.readOnly = true;
+            input.tabIndex = -1;
             input.setAttribute("aria-label", `Linha ${row + 1}, coluna ${col + 1}`);
             if (puzzle[row][col] !== 0) {
                 input.value = puzzle[row][col];
@@ -835,7 +898,7 @@ function renderBoard(puzzle) {
             if ((row + 1) % 3 === 0 && row !== 8) cell.classList.add("box-bottom");
             cell.appendChild(input);
             cell.addEventListener("click", () => selectCell(row, col));
-            input.addEventListener("focus", () => selectCell(row, col));
+            cell.addEventListener("pointerdown", event => event.preventDefault());
             board.appendChild(cell);
         }
     }
@@ -981,6 +1044,7 @@ function closeProfileScreen() {
 }
 
 document.getElementById("profile-btn").addEventListener("click", openProfileScreen);
+document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
 document.getElementById("back-to-game").addEventListener("click", closeProfileScreen);
 document.querySelectorAll("[data-key]").forEach(button => {
     button.addEventListener("click", () => enterNumber(Number(button.dataset.key)));
@@ -997,6 +1061,7 @@ document.addEventListener("keydown", event => {
 });
 
 window.addEventListener("DOMContentLoaded", () => {
+    initializeTheme();
     loadProfile();
     showProfile();
     startGame();
