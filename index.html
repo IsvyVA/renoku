@@ -47,6 +47,12 @@
         --fixed-highlight-cell: #e1e7df;
         --selected-cell: #cadfce;
         --primary: #3e644a;
+        --card: rgba(255, 255, 255, 0.82);
+        --soft-border: rgba(52, 55, 49, 0.08);
+        --profile-start: #3e644a;
+        --profile-end: #72977b;
+        --badge-background: #f5e7b9;
+        --badge-ink: #6d5410;
     }
 
     :root[data-theme="dark"] {
@@ -69,6 +75,12 @@
         --fixed-highlight-cell: #304034;
         --selected-cell: #3a5b42;
         --primary: #456f51;
+        --card: #202620;
+        --soft-border: rgba(210, 222, 212, 0.13);
+        --profile-start: #2f5138;
+        --profile-end: #466950;
+        --badge-background: #51451f;
+        --badge-ink: #f5dfa0;
     }
 
     * { box-sizing: border-box; }
@@ -162,7 +174,7 @@
         justify-content: center;
         min-height: 72px;
         padding: 12px 14px;
-        border: 1px solid rgba(52, 55, 49, 0.08);
+        border: 1px solid var(--soft-border);
         border-radius: 18px;
         background: var(--panel);
         box-shadow: var(--shadow);
@@ -370,10 +382,11 @@
         padding: 22px;
         border-radius: 22px;
         color: #ffffff;
-        background: linear-gradient(135deg, var(--accent-dark), #72977b);
+        background: linear-gradient(135deg, var(--profile-start), var(--profile-end));
         box-shadow: 0 14px 30px rgba(62, 100, 74, 0.2);
     }
     .profile-hero h2, .profile-hero p { color: inherit; }
+    .profile-hero p { opacity: 0.92; }
     .profile-hero h2 { margin-bottom: 8px; }
     .profile-stats {
         display: grid;
@@ -384,9 +397,9 @@
     .stat-card {
         min-width: 0;
         padding: 16px;
-        border: 1px solid rgba(52, 55, 49, 0.08);
+        border: 1px solid var(--soft-border);
         border-radius: 17px;
-        background: rgba(255, 255, 255, 0.82);
+        background: var(--card);
     }
     .stat-card span {
         display: block;
@@ -413,7 +426,7 @@
         position: relative;
         margin: 0;
         padding: 14px 16px 14px 42px;
-        border: 1px solid rgba(52, 55, 49, 0.08);
+        border: 1px solid var(--soft-border);
         border-radius: 15px;
         background: var(--surface);
         font-size: 0.79rem;
@@ -430,8 +443,8 @@
     .badge {
         padding: 9px 12px;
         border-radius: 999px;
-        color: #6d5410;
-        background: #f5e7b9;
+        color: var(--badge-ink);
+        background: var(--badge-background);
         font-size: 0.72rem;
         font-weight: 600;
     }
@@ -609,6 +622,8 @@
 const N = 9;
 const PROFILE_KEY = "renoku-profile";
 const THEME_KEY = "renoku-theme";
+const GAME_KEY = "renoku-current-game";
+const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
 
 let solution = [];
 let timerInterval;
@@ -619,6 +634,8 @@ let gameStarted = false;
 let selectedCell = null;
 let profileTimerWasRunning = false;
 let profile = null;
+let initialPuzzle = [];
+let currentDifficulty = "medium";
 
 const romanticMessages = [
     { key: "frase-01", text: "Você é minha campeã para sempre ♥️" },
@@ -649,26 +666,35 @@ const badgeList = [
     { key: "rapido_hard", label: "Difícil em menos de 5 min" }
 ];
 
-function applyTheme(theme) {
+function applyTheme(mode) {
+    const theme = mode === "system" ? (systemTheme.matches ? "dark" : "light") : mode;
     const isDark = theme === "dark";
     const toggle = document.getElementById("theme-toggle");
     document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.themeMode = mode;
     document.querySelector('meta[name="theme-color"]').content = isDark ? "#151915" : "#f7f5f0";
-    toggle.querySelector("span").innerText = isDark ? "☀" : "☾";
-    toggle.setAttribute("aria-label", isDark ? "Ativar modo claro" : "Ativar modo escuro");
+    toggle.querySelector("span").innerText = mode === "system" ? "◐" : (isDark ? "☾" : "☀");
+    const modeLabel = mode === "system" ? "sistema" : (isDark ? "escuro" : "claro");
+    toggle.setAttribute("aria-label", `Tema: ${modeLabel}. Alterar tema`);
 }
 
 function initializeTheme() {
     const savedTheme = localStorage.getItem(THEME_KEY);
-    const preferredTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    applyTheme(savedTheme || preferredTheme);
+    const validTheme = ["system", "dark", "light"].includes(savedTheme) ? savedTheme : "system";
+    applyTheme(validTheme);
 }
 
 function toggleTheme() {
-    const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    const modes = ["system", "dark", "light"];
+    const currentMode = document.documentElement.dataset.themeMode || "system";
+    const nextTheme = modes[(modes.indexOf(currentMode) + 1) % modes.length];
     localStorage.setItem(THEME_KEY, nextTheme);
     applyTheme(nextTheme);
 }
+
+systemTheme.addEventListener("change", () => {
+    if (document.documentElement.dataset.themeMode === "system") applyTheme("system");
+});
 
 function createDefaultProfile() {
     return {
@@ -690,6 +716,7 @@ function runTimer() {
     timerInterval = setInterval(() => {
         seconds++;
         document.getElementById("timer").innerText = formatTime(seconds);
+        if (seconds % 5 === 0) saveCurrentGame();
     }, 1000);
 }
 
@@ -710,6 +737,7 @@ function pauseGame() {
     stopTimer();
     document.querySelectorAll("#board input").forEach(input => { input.disabled = true; });
     document.getElementById("pauseOverlay").classList.add("active");
+    saveCurrentGame();
 }
 
 function resumeGame() {
@@ -719,6 +747,7 @@ function resumeGame() {
     document.querySelectorAll("#board input").forEach(input => {
         input.disabled = input.closest(".cell").classList.contains("fixed");
     });
+    saveCurrentGame();
 }
 
 function isValid(board, row, col, num) {
@@ -768,15 +797,104 @@ function generateFullBoard() {
     return board;
 }
 
+function getCandidates(board, row, col) {
+    if (board[row][col] !== 0) return [];
+    let candidates = [];
+    for (let number = 1; number <= 9; number++) {
+        if (isValid(board, row, col, number)) candidates.push(number);
+    }
+    return candidates;
+}
+
+function countSolutions(board, limit = 2) {
+    let bestCell = null;
+    let bestCandidates = null;
+    for (let row = 0; row < N; row++) {
+        for (let col = 0; col < N; col++) {
+            if (board[row][col] !== 0) continue;
+            const candidates = getCandidates(board, row, col);
+            if (candidates.length === 0) return 0;
+            if (!bestCandidates || candidates.length < bestCandidates.length) {
+                bestCell = [row, col];
+                bestCandidates = candidates;
+            }
+        }
+    }
+    if (!bestCell) return 1;
+
+    let solutions = 0;
+    const [row, col] = bestCell;
+    for (const number of bestCandidates) {
+        board[row][col] = number;
+        solutions += countSolutions(board, limit - solutions);
+        board[row][col] = 0;
+        if (solutions >= limit) break;
+    }
+    return solutions;
+}
+
+function findLogicalMove(board) {
+    for (let row = 0; row < N; row++) {
+        for (let col = 0; col < N; col++) {
+            if (board[row][col] !== 0) continue;
+            const candidates = getCandidates(board, row, col);
+            if (candidates.length === 1) return [row, col, candidates[0]];
+        }
+    }
+
+    let units = [];
+    for (let index = 0; index < N; index++) {
+        units.push(Array.from({ length: N }, (_, col) => [index, col]));
+        units.push(Array.from({ length: N }, (_, row) => [row, index]));
+    }
+    for (let boxRow = 0; boxRow < 3; boxRow++) {
+        for (let boxCol = 0; boxCol < 3; boxCol++) {
+            let unit = [];
+            for (let rowOffset = 0; rowOffset < 3; rowOffset++) {
+                for (let colOffset = 0; colOffset < 3; colOffset++) {
+                    unit.push([boxRow * 3 + rowOffset, boxCol * 3 + colOffset]);
+                }
+            }
+            units.push(unit);
+        }
+    }
+
+    for (const unit of units) {
+        for (let number = 1; number <= 9; number++) {
+            const matches = unit.filter(([row, col]) => getCandidates(board, row, col).includes(number));
+            if (matches.length === 1) return [matches[0][0], matches[0][1], number];
+        }
+    }
+    return null;
+}
+
+function isSolvableWithoutGuessing(puzzle) {
+    let board = puzzle.map(row => [...row]);
+    while (board.some(row => row.includes(0))) {
+        const move = findLogicalMove(board);
+        if (!move) return false;
+        board[move[0]][move[1]] = move[2];
+    }
+    return true;
+}
+
 function removeNumbers(board, difficulty) {
     let puzzle = board.map(row => [...row]);
-    let removeCount = difficulty === "easy" ? 30 : difficulty === "medium" ? 40 : 50;
-    while (removeCount > 0) {
-        let row = Math.floor(Math.random() * 9);
-        let col = Math.floor(Math.random() * 9);
-        if (puzzle[row][col] !== 0) {
-            puzzle[row][col] = 0;
-            removeCount--;
+    const target = difficulty === "easy" ? 30 : difficulty === "medium" ? 40 : 50;
+    let removed = 0;
+    let positions = Array.from({ length: 81 }, (_, index) => index);
+    shuffle(positions);
+
+    for (const position of positions) {
+        if (removed >= target) break;
+        const row = Math.floor(position / 9);
+        const col = position % 9;
+        const value = puzzle[row][col];
+        puzzle[row][col] = 0;
+        if (countSolutions(puzzle.map(line => [...line])) !== 1 || !isSolvableWithoutGuessing(puzzle)) {
+            puzzle[row][col] = value;
+        } else {
+            removed++;
         }
     }
     return puzzle;
@@ -793,6 +911,7 @@ function checkWin() {
     }
     gameStarted = false;
     stopTimer();
+    localStorage.removeItem(GAME_KEY);
     const unlockedMessage = unlockVictoryMessage();
     updateProfileAfterWin();
     showVictoryScreen(unlockedMessage);
@@ -800,7 +919,12 @@ function checkWin() {
 }
 
 function toggleNotes() {
-    notesMode = !notesMode;
+    setNotesMode(!notesMode);
+    saveCurrentGame();
+}
+
+function setNotesMode(enabled) {
+    notesMode = enabled;
     const notesButton = document.getElementById("notesBtn");
     notesButton.innerText = notesMode ? "✎ Marcações: ON" : "✎ Marcações: OFF";
     notesButton.classList.toggle("active", notesMode);
@@ -831,11 +955,13 @@ function processCellInput(cell, rawValue) {
         input.value = "";
         cell.dataset.value = "";
         cell.classList.remove("error");
+        saveCurrentGame();
         return;
     }
     if (notesMode) {
         addNote(cell, value);
         input.value = "";
+        saveCurrentGame();
         return;
     }
     input.value = value;
@@ -846,8 +972,10 @@ function processCellInput(cell, rawValue) {
         cell.classList.remove("error");
         let notes = cell.querySelector(".notes");
         if (notes) notes.remove();
-        checkWin();
+        if (!checkWin()) saveCurrentGame();
+        return;
     }
+    saveCurrentGame();
 }
 
 function enterNumber(number) {
@@ -865,7 +993,7 @@ function eraseSelectedCell() {
     selectedCell.dataset.value = "";
     selectedCell.classList.remove("error");
     if (notes) notes.remove();
-    input.focus({ preventScroll: true });
+    saveCurrentGame();
 }
 
 function renderBoard(puzzle) {
@@ -913,18 +1041,93 @@ function selectCell(row, col) {
     });
 }
 
+function isStoredGrid(grid) {
+    return Array.isArray(grid) && grid.length === 9 && grid.every(row =>
+        Array.isArray(row) && row.length === 9 && row.every(value => Number.isInteger(value) && value >= 0 && value <= 9)
+    );
+}
+
+function saveCurrentGame() {
+    if (!gameStarted || !isStoredGrid(solution) || !isStoredGrid(initialPuzzle)) return;
+    const cells = Array.from(document.querySelectorAll("#board .cell")).map(cell => ({
+        value: Number(cell.querySelector("input").value) || 0,
+        notes: Array.from(cell.querySelectorAll(".notes span"))
+            .filter(span => span.innerText)
+            .map(span => Number(span.dataset.number))
+    }));
+    if (cells.length !== 81) return;
+    localStorage.setItem(GAME_KEY, JSON.stringify({
+        version: 1,
+        solution,
+        puzzle: initialPuzzle,
+        cells,
+        difficulty: currentDifficulty,
+        seconds,
+        notesMode,
+        isPaused
+    }));
+}
+
+function restoreSavedGame() {
+    const stored = localStorage.getItem(GAME_KEY);
+    if (!stored) return false;
+    try {
+        const game = JSON.parse(stored);
+        if (game.version !== 1 || !isStoredGrid(game.solution) || !isStoredGrid(game.puzzle) ||
+            !Array.isArray(game.cells) || game.cells.length !== 81) return false;
+
+        solution = game.solution.map(row => [...row]);
+        initialPuzzle = game.puzzle.map(row => [...row]);
+        currentDifficulty = ["easy", "medium", "hard"].includes(game.difficulty) ? game.difficulty : "medium";
+        document.getElementById("difficulty").value = currentDifficulty;
+        renderBoard(initialPuzzle);
+
+        document.querySelectorAll("#board .cell").forEach((cell, index) => {
+            if (cell.classList.contains("fixed")) return;
+            const savedCell = game.cells[index] || {};
+            const value = Number(savedCell.value);
+            if (Number.isInteger(value) && value >= 1 && value <= 9) {
+                const input = cell.querySelector("input");
+                input.value = value;
+                cell.dataset.value = value;
+                cell.classList.toggle("error", value !== solution[Number(cell.dataset.row)][Number(cell.dataset.col)]);
+            } else if (Array.isArray(savedCell.notes)) {
+                savedCell.notes.filter(number => Number.isInteger(number) && number >= 1 && number <= 9)
+                    .forEach(number => addNote(cell, number));
+            }
+        });
+
+        seconds = Number.isInteger(game.seconds) && game.seconds >= 0 ? game.seconds : 0;
+        document.getElementById("timer").innerText = formatTime(seconds);
+        setNotesMode(Boolean(game.notesMode));
+        isPaused = Boolean(game.isPaused);
+        gameStarted = true;
+        if (isPaused) {
+            document.querySelectorAll("#board input").forEach(input => { input.disabled = true; });
+            document.getElementById("pauseOverlay").classList.add("active");
+        } else {
+            runTimer();
+        }
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 function startGame() {
     document.getElementById("victoryScreen").classList.remove("active");
     document.getElementById("pauseOverlay").classList.remove("active");
-    const difficulty = document.getElementById("difficulty").value;
+    currentDifficulty = document.getElementById("difficulty").value;
     solution = generateFullBoard();
-    let puzzle = removeNumbers(solution.map(row => [...row]), difficulty);
+    let puzzle = removeNumbers(solution.map(row => [...row]), currentDifficulty);
+    initialPuzzle = puzzle.map(row => [...row]);
     isPaused = false;
     gameStarted = true;
     renderBoard(puzzle);
     startTimer();
     profile.gamesPlayed = (profile.gamesPlayed || 0) + 1;
     saveProfile();
+    saveCurrentGame();
     showProfile();
 }
 
@@ -1008,7 +1211,7 @@ function unlockVictoryMessage() {
 }
 
 function updateProfileAfterWin() {
-    let difficulty = document.getElementById("difficulty").value;
+    let difficulty = currentDifficulty;
     if (!profile.bestTimes[difficulty] || seconds < profile.bestTimes[difficulty]) profile.bestTimes[difficulty] = seconds;
     unlockBadge("primeira");
     if (profile.gamesPlayed >= 5) unlockBadge("5games");
@@ -1029,6 +1232,7 @@ function showVictoryScreen(message) {
 function openProfileScreen() {
     profileTimerWasRunning = gameStarted && !isPaused;
     if (profileTimerWasRunning) stopTimer();
+    saveCurrentGame();
     showProfile();
     document.getElementById("game-screen").hidden = true;
     document.getElementById("profile-screen").hidden = false;
@@ -1059,12 +1263,21 @@ document.addEventListener("keydown", event => {
         eraseSelectedCell();
     }
 });
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+        stopTimer();
+        saveCurrentGame();
+    } else if (gameStarted && !isPaused && !document.getElementById("game-screen").hidden) {
+        runTimer();
+    }
+});
+window.addEventListener("pagehide", saveCurrentGame);
 
 window.addEventListener("DOMContentLoaded", () => {
     initializeTheme();
     loadProfile();
     showProfile();
-    startGame();
+    if (!restoreSavedGame()) startGame();
 });
 
 if ("serviceWorker" in navigator) {

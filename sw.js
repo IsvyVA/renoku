@@ -1,4 +1,4 @@
-const CACHE_NAME = "renoku-v4";
+const CACHE_NAME = "renoku-v5";
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
