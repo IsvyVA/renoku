@@ -302,6 +302,7 @@
         pointer-events: none;
     }
     .cell.fixed input { color: var(--ink); background: var(--fixed-cell); }
+    .cell.solved input { color: var(--accent-dark); background: var(--accent-soft); }
     .cell.highlight input { background: var(--highlight-cell); }
     .cell.fixed.highlight input { background: var(--fixed-highlight-cell); }
     .cell.selected input, .cell.fixed.selected input {
@@ -325,6 +326,7 @@
         text-align: center;
     }
     .notes span { display: grid; place-items: center; }
+    .cell:not([data-value=""]) .notes { display: none; }
 
     .number-pad {
         display: grid;
@@ -353,6 +355,7 @@
         font-weight: 600;
         box-shadow: 0 10px 24px rgba(62, 100, 74, 0.2);
     }
+    .new-game-button { margin-bottom: 12px; }
     .game-hint {
         margin: 12px 0 0;
         color: var(--muted);
@@ -412,6 +415,47 @@
     }
     .stat-card strong { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
     .profile-section { margin-bottom: 26px; }
+    .profile-settings {
+        margin-bottom: 24px;
+        padding: 16px;
+        border: 1px solid var(--soft-border);
+        border-radius: 17px;
+        background: var(--card);
+    }
+    .profile-settings[hidden] { display: none; }
+    .setting-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+    }
+    .setting-copy strong, .setting-copy span { display: block; }
+    .setting-copy strong { margin-bottom: 5px; font-size: 0.82rem; }
+    .setting-copy span { color: var(--muted); font-size: 0.68rem; line-height: 1.45; }
+    .switch { position: relative; flex: 0 0 auto; width: 48px; height: 28px; }
+    .switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .switch-track {
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background: var(--line);
+        transition: background-color 150ms ease;
+    }
+    .switch-track::after {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--surface);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        content: "";
+        transition: transform 150ms ease;
+    }
+    .switch input:checked + .switch-track { background: var(--accent); }
+    .switch input:checked + .switch-track::after { transform: translateX(20px); }
+    .switch input:focus-visible + .switch-track { outline: 3px solid rgba(88, 130, 100, 0.3); outline-offset: 2px; }
     .section-title-row {
         display: flex;
         align-items: baseline;
@@ -552,10 +596,7 @@
                 </div>
             </div>
 
-            <div class="control-row">
-                <button class="control-button" id="notesBtn" type="button" onclick="toggleNotes()">✎ Marcações: OFF</button>
-                <button class="control-button" id="pauseBtn" type="button" onclick="togglePause()">Ⅱ Pausar</button>
-            </div>
+            <button class="primary-button new-game-button" type="button" onclick="startGame()">Nova partida</button>
 
             <div class="board-frame"><div id="board" role="grid" aria-label="Tabuleiro de Sudoku"></div></div>
 
@@ -572,7 +613,10 @@
                 <button class="key-button erase" id="erase-key" type="button" aria-label="Apagar">⌫</button>
             </div>
 
-            <button class="primary-button" type="button" onclick="startGame()">Nova partida</button>
+            <div class="control-row">
+                <button class="control-button" id="pauseBtn" type="button" onclick="togglePause()">Ⅱ Pausar</button>
+                <button class="control-button" id="notesBtn" type="button" onclick="toggleNotes()">✎ Marcações: OFF</button>
+            </div>
             <p class="game-hint">Selecione uma casa e use o teclado. Ative as marcações para guardar possibilidades.</p>
         </main>
     </section>
@@ -584,6 +628,7 @@
                 <span class="brand-eyebrow">Sua jornada</span>
                 <h1 id="profile-title">Perfil</h1>
             </div>
+            <button id="settings-btn" class="back-button" type="button" aria-label="Abrir configurações" aria-expanded="false">⚙</button>
         </header>
 
         <main>
@@ -591,6 +636,19 @@
                 <h2>Olá, <span id="player-name">Renata</span>!</h2>
                 <p>Cada vitória guarda uma nova frase para a sua coleção.</p>
             </div>
+
+            <section id="profile-settings" class="profile-settings" aria-labelledby="settings-title" hidden>
+                <div class="setting-row">
+                    <div class="setting-copy">
+                        <strong id="settings-title">Avisar números incorretos</strong>
+                        <span>Destaca imediatamente uma resposta errada.</span>
+                    </div>
+                    <label class="switch">
+                        <input id="mistake-help" type="checkbox" checked aria-label="Avisar quando um número estiver incorreto">
+                        <span class="switch-track" aria-hidden="true"></span>
+                    </label>
+                </div>
+            </section>
 
             <div class="profile-stats">
                 <div class="stat-card"><span>Partidas</span><strong id="games-played">0</strong></div>
@@ -641,7 +699,10 @@
         <h2 id="victory-title">Parabéns, meu amor!</h2>
         <p id="finalTime"></p>
         <p id="romanticText"></p>
-        <button class="primary-button" type="button" onclick="startGame()">Jogar novamente</button>
+        <div class="dialog-actions">
+            <button class="primary-button" type="button" onclick="startGame()">Jogar novamente</button>
+            <button class="secondary-button" type="button" onclick="closeVictoryScreen()">Voltar</button>
+        </div>
     </div>
 </div>
 
@@ -731,7 +792,8 @@ function createDefaultProfile() {
         gamesPlayed: 0,
         bestTimes: { easy: null, medium: null, hard: null },
         badges: [],
-        unlockedMessages: []
+        unlockedMessages: [],
+        showMistakes: true
     };
 }
 
@@ -775,7 +837,7 @@ function resumeGame() {
     if (gameStarted) runTimer();
     document.getElementById("pauseOverlay").classList.remove("active");
     document.querySelectorAll("#board input").forEach(input => {
-        input.disabled = input.closest(".cell").classList.contains("fixed");
+        input.disabled = input.closest(".cell").matches(".fixed, .solved");
     });
     saveCurrentGame();
 }
@@ -978,6 +1040,32 @@ function addNote(cell, number) {
     target.innerText = target.innerText ? "" : number;
 }
 
+function removeNote(cell, number) {
+    const notes = cell.querySelector(".notes");
+    if (!notes) return;
+    const target = notes.querySelector(`[data-number="${number}"]`);
+    if (target) target.innerText = "";
+    if (!Array.from(notes.children).some(span => span.innerText)) notes.remove();
+}
+
+function removePeerNotes(cell, number) {
+    const row = Number(cell.dataset.row);
+    const col = Number(cell.dataset.col);
+    const boxRow = Math.floor(row / 3);
+    const boxCol = Math.floor(col / 3);
+    document.querySelectorAll("#board .cell").forEach(peer => {
+        const peerRow = Number(peer.dataset.row);
+        const peerCol = Number(peer.dataset.col);
+        const sharesUnit = peerRow === row || peerCol === col ||
+            (Math.floor(peerRow / 3) === boxRow && Math.floor(peerCol / 3) === boxCol);
+        if (sharesUnit) removeNote(peer, number);
+    });
+}
+
+function shouldShowMistakes() {
+    return !profile || profile.showMistakes !== false;
+}
+
 function processCellInput(cell, rawValue) {
     const input = cell.querySelector("input");
     let value = parseInt(rawValue);
@@ -991,17 +1079,22 @@ function processCellInput(cell, rawValue) {
     if (notesMode) {
         addNote(cell, value);
         input.value = "";
+        cell.dataset.value = "";
+        cell.classList.remove("error");
         saveCurrentGame();
         return;
     }
     input.value = value;
     cell.dataset.value = value;
     if (value !== solution[Number(cell.dataset.row)][Number(cell.dataset.col)]) {
-        cell.classList.add("error");
+        cell.classList.toggle("error", shouldShowMistakes());
     } else {
         cell.classList.remove("error");
         let notes = cell.querySelector(".notes");
         if (notes) notes.remove();
+        cell.classList.add("solved");
+        input.disabled = true;
+        removePeerNotes(cell, value);
         if (!checkWin()) saveCurrentGame();
         return;
     }
@@ -1009,20 +1102,18 @@ function processCellInput(cell, rawValue) {
 }
 
 function enterNumber(number) {
-    if (!selectedCell || selectedCell.classList.contains("fixed") || isPaused || !gameStarted) return;
+    if (!selectedCell || selectedCell.matches(".fixed, .solved") || isPaused || !gameStarted) return;
     if (document.getElementById("game-screen").hidden) return;
     processCellInput(selectedCell, number);
 }
 
 function eraseSelectedCell() {
-    if (!selectedCell || selectedCell.classList.contains("fixed") || isPaused || !gameStarted) return;
+    if (!selectedCell || selectedCell.matches(".fixed, .solved") || isPaused || !gameStarted) return;
     if (document.getElementById("game-screen").hidden) return;
     let input = selectedCell.querySelector("input");
-    let notes = selectedCell.querySelector(".notes");
     input.value = "";
     selectedCell.dataset.value = "";
     selectedCell.classList.remove("error");
-    if (notes) notes.remove();
     saveCurrentGame();
 }
 
@@ -1208,7 +1299,10 @@ function restoreSavedGame(game) {
                 const input = cell.querySelector("input");
                 input.value = value;
                 cell.dataset.value = value;
-                cell.classList.toggle("error", value !== solution[Number(cell.dataset.row)][Number(cell.dataset.col)]);
+                const isCorrect = value === solution[Number(cell.dataset.row)][Number(cell.dataset.col)];
+                cell.classList.toggle("error", !isCorrect && shouldShowMistakes());
+                cell.classList.toggle("solved", isCorrect);
+                input.disabled = isCorrect;
             } else if (Array.isArray(savedCell.notes)) {
                 savedCell.notes.filter(number => Number.isInteger(number) && number >= 1 && number <= 9)
                     .forEach(number => addNote(cell, number));
@@ -1298,6 +1392,7 @@ function saveProfile() { localStorage.setItem(PROFILE_KEY, JSON.stringify(profil
 
 function showProfile() {
     document.getElementById("games-played").innerText = profile.gamesPlayed || 0;
+    document.getElementById("mistake-help").checked = profile.showMistakes !== false;
     ["easy", "medium", "hard"].forEach(difficulty => {
         let element = document.getElementById("best-time-" + difficulty);
         element.innerText = profile.bestTimes[difficulty] ? formatTime(profile.bestTimes[difficulty]) : "--:--";
@@ -1371,6 +1466,28 @@ function showVictoryScreen(message) {
     document.getElementById("victoryScreen").classList.add("active");
 }
 
+function closeVictoryScreen() {
+    document.getElementById("victoryScreen").classList.remove("active");
+}
+
+function toggleProfileSettings() {
+    const settings = document.getElementById("profile-settings");
+    const button = document.getElementById("settings-btn");
+    settings.hidden = !settings.hidden;
+    button.setAttribute("aria-expanded", !settings.hidden);
+    button.setAttribute("aria-label", settings.hidden ? "Abrir configurações" : "Fechar configurações");
+}
+
+function updateMistakeHelp() {
+    profile.showMistakes = document.getElementById("mistake-help").checked;
+    saveProfile();
+    document.querySelectorAll("#board .cell:not(.fixed):not(.solved)").forEach(cell => {
+        const value = Number(cell.querySelector("input").value);
+        const isWrong = value && value !== solution[Number(cell.dataset.row)][Number(cell.dataset.col)];
+        cell.classList.toggle("error", Boolean(profile.showMistakes && isWrong));
+    });
+}
+
 function openProfileScreen() {
     profileTimerWasRunning = gameStarted && !isPaused;
     if (profileTimerWasRunning) stopTimer();
@@ -1392,6 +1509,8 @@ function closeProfileScreen() {
 document.getElementById("profile-btn").addEventListener("click", openProfileScreen);
 document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
 document.getElementById("back-to-game").addEventListener("click", closeProfileScreen);
+document.getElementById("settings-btn").addEventListener("click", toggleProfileSettings);
+document.getElementById("mistake-help").addEventListener("change", updateMistakeHelp);
 document.querySelectorAll("[data-key]").forEach(button => {
     button.addEventListener("click", () => enterNumber(Number(button.dataset.key)));
 });
