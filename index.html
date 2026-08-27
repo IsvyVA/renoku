@@ -474,6 +474,21 @@
     }
     .overlay.active .overlay-card { transform: translateY(0) scale(1); }
     .overlay-card p { color: var(--muted); font-size: 0.88rem; line-height: 1.6; }
+    .dialog-actions {
+        display: grid;
+        gap: 10px;
+        margin-top: 20px;
+    }
+    .dialog-actions .primary-button { margin-top: 0; }
+    .secondary-button {
+        min-height: 48px;
+        padding: 12px 18px;
+        border-radius: 14px;
+        color: var(--ink);
+        background: var(--surface-soft);
+        font-size: 0.88rem;
+        font-weight: 600;
+    }
     .unlock-label {
         display: inline-block;
         margin-bottom: 14px;
@@ -600,6 +615,18 @@
     </section>
 </div>
 
+<div id="resumePrompt" class="overlay" role="dialog" aria-modal="true" aria-labelledby="resume-title">
+    <div class="overlay-card">
+        <span class="unlock-label">Partida guardada</span>
+        <h2 id="resume-title">Quer continuar?</h2>
+        <p id="resume-summary">Encontramos uma partida anterior.</p>
+        <div class="dialog-actions">
+            <button class="primary-button" type="button" onclick="resumePreviousGame()">Retomar partida</button>
+            <button class="secondary-button" type="button" onclick="discardPreviousGame()">Começar nova partida</button>
+        </div>
+    </div>
+</div>
+
 <div id="pauseOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
     <div class="overlay-card">
         <h2 id="pause-title">Jogo pausado</h2>
@@ -623,6 +650,8 @@ const N = 9;
 const PROFILE_KEY = "renoku-profile";
 const THEME_KEY = "renoku-theme";
 const GAME_KEY = "renoku-current-game";
+const GAME_DB_NAME = "renoku-storage";
+const GAME_STORE_NAME = "games";
 const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
 
 let solution = [];
@@ -636,6 +665,7 @@ let profileTimerWasRunning = false;
 let profile = null;
 let initialPuzzle = [];
 let currentDifficulty = "medium";
+let pendingSavedGame = null;
 
 const romanticMessages = [
     { key: "frase-01", text: "Você é minha campeã para sempre ♥️" },
@@ -911,7 +941,7 @@ function checkWin() {
     }
     gameStarted = false;
     stopTimer();
-    localStorage.removeItem(GAME_KEY);
+    clearSavedGame();
     const unlockedMessage = unlockVictoryMessage();
     updateProfileAfterWin();
     showVictoryScreen(unlockedMessage);
@@ -1047,6 +1077,91 @@ function isStoredGrid(grid) {
     );
 }
 
+function isStoredGame(game) {
+    return Boolean(game) && [1, 2].includes(game.version) && isStoredGrid(game.solution) &&
+        isStoredGrid(game.puzzle) && Array.isArray(game.cells) && game.cells.length === 81;
+}
+
+function openGameDatabase() {
+    return new Promise((resolve, reject) => {
+        if (!("indexedDB" in window)) {
+            reject(new Error("IndexedDB indisponível"));
+            return;
+        }
+        const request = indexedDB.open(GAME_DB_NAME, 1);
+        request.onupgradeneeded = () => {
+            const database = request.result;
+            if (!database.objectStoreNames.contains(GAME_STORE_NAME)) database.createObjectStore(GAME_STORE_NAME);
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function writeGameBackup(game) {
+    const database = await openGameDatabase();
+    await new Promise((resolve, reject) => {
+        const transaction = database.transaction(GAME_STORE_NAME, "readwrite");
+        transaction.objectStore(GAME_STORE_NAME).put(game, GAME_KEY);
+        transaction.oncomplete = resolve;
+        transaction.onerror = () => reject(transaction.error);
+    });
+    database.close();
+}
+
+async function readGameBackup() {
+    const database = await openGameDatabase();
+    const game = await new Promise((resolve, reject) => {
+        const request = database.transaction(GAME_STORE_NAME, "readonly")
+            .objectStore(GAME_STORE_NAME).get(GAME_KEY);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return game;
+}
+
+async function clearSavedGame() {
+    try {
+        localStorage.removeItem(GAME_KEY);
+    } catch {
+        // IndexedDB remains available as the persistent fallback.
+    }
+    try {
+        const database = await openGameDatabase();
+        await new Promise((resolve, reject) => {
+            const transaction = database.transaction(GAME_STORE_NAME, "readwrite");
+            transaction.objectStore(GAME_STORE_NAME).delete(GAME_KEY);
+            transaction.oncomplete = resolve;
+            transaction.onerror = () => reject(transaction.error);
+        });
+        database.close();
+    } catch {
+        // localStorage may still have completed the cleanup.
+    }
+}
+
+async function loadCurrentGame() {
+    let localGame = null;
+    try {
+        const stored = localStorage.getItem(GAME_KEY);
+        if (stored) localGame = JSON.parse(stored);
+    } catch {
+        localGame = null;
+    }
+
+    let backupGame = null;
+    try {
+        backupGame = await readGameBackup();
+    } catch {
+        backupGame = null;
+    }
+
+    return [localGame, backupGame]
+        .filter(isStoredGame)
+        .sort((first, second) => (second.savedAt || 0) - (first.savedAt || 0))[0] || null;
+}
+
 function saveCurrentGame() {
     if (!gameStarted || !isStoredGrid(solution) || !isStoredGrid(initialPuzzle)) return;
     const cells = Array.from(document.querySelectorAll("#board .cell")).map(cell => ({
@@ -1056,25 +1171,28 @@ function saveCurrentGame() {
             .map(span => Number(span.dataset.number))
     }));
     if (cells.length !== 81) return;
-    localStorage.setItem(GAME_KEY, JSON.stringify({
-        version: 1,
+    const game = {
+        version: 2,
         solution,
         puzzle: initialPuzzle,
         cells,
         difficulty: currentDifficulty,
         seconds,
         notesMode,
-        isPaused
-    }));
+        isPaused,
+        savedAt: Date.now()
+    };
+    try {
+        localStorage.setItem(GAME_KEY, JSON.stringify(game));
+    } catch {
+        // The IndexedDB copy below is the persistent fallback.
+    }
+    writeGameBackup(game).catch(() => {});
 }
 
-function restoreSavedGame() {
-    const stored = localStorage.getItem(GAME_KEY);
-    if (!stored) return false;
+function restoreSavedGame(game) {
     try {
-        const game = JSON.parse(stored);
-        if (game.version !== 1 || !isStoredGrid(game.solution) || !isStoredGrid(game.puzzle) ||
-            !Array.isArray(game.cells) || game.cells.length !== 81) return false;
+        if (!isStoredGame(game)) return false;
 
         solution = game.solution.map(row => [...row]);
         initialPuzzle = game.puzzle.map(row => [...row]);
@@ -1112,6 +1230,30 @@ function restoreSavedGame() {
     } catch {
         return false;
     }
+}
+
+function showResumePrompt(game) {
+    pendingSavedGame = game;
+    const difficultyLabels = { easy: "fácil", medium: "média", hard: "difícil" };
+    const difficulty = difficultyLabels[game.difficulty] || difficultyLabels.medium;
+    const savedSeconds = Number.isInteger(game.seconds) && game.seconds >= 0 ? game.seconds : 0;
+    document.getElementById("resume-summary").innerText =
+        `Sua partida ${difficulty} está em ${formatTime(savedSeconds)}. Você quer retomá-la?`;
+    document.getElementById("resumePrompt").classList.add("active");
+}
+
+function resumePreviousGame() {
+    document.getElementById("resumePrompt").classList.remove("active");
+    const game = pendingSavedGame;
+    pendingSavedGame = null;
+    if (!restoreSavedGame(game)) startGame();
+}
+
+async function discardPreviousGame() {
+    document.getElementById("resumePrompt").classList.remove("active");
+    pendingSavedGame = null;
+    await clearSavedGame();
+    startGame();
 }
 
 function startGame() {
@@ -1273,11 +1415,16 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("pagehide", saveCurrentGame);
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
     initializeTheme();
     loadProfile();
     showProfile();
-    if (!restoreSavedGame()) startGame();
+    const savedGame = await loadCurrentGame();
+    if (savedGame) {
+        showResumePrompt(savedGame);
+    } else {
+        startGame();
+    }
 });
 
 if ("serviceWorker" in navigator) {
